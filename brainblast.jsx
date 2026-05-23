@@ -6,6 +6,8 @@ const TIME_LIMIT = 15;
 const MAX_SCORE = 1000;
 
 const LANGUAGES = ["English", "Malay", "Chinese Simplified"];
+const IOS_DISMISS_KEY = "bb-install-ios-dismissed";
+const ANDROID_DISMISS_KEY = "bb-install-android-dismissed";
 
 const ANS_COLORS = [
   { bg: "#e63946", light: "#ff6b6b", dark: "#c1121f", label: "A" },
@@ -489,6 +491,100 @@ function ResultsScreen({ questions, results, onPlayAgain, loading }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// PWA INSTALL PROMPT
+// ═══════════════════════════════════════════════════════════════════════════════
+function InstallPrompt() {
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [showAndroidPrompt, setShowAndroidPrompt] = useState(false);
+  const [showIOSPrompt, setShowIOSPrompt] = useState(false);
+
+  useEffect(() => {
+    const ua = window.navigator.userAgent || "";
+    const isIOS = /iphone|ipad|ipod/i.test(ua);
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+
+    const isDismissed = (key) => {
+      try {
+        return window.localStorage.getItem(key) === "1";
+      } catch {
+        return false;
+      }
+    };
+
+    if (isIOS && !isStandalone && !isDismissed(IOS_DISMISS_KEY)) {
+      setShowIOSPrompt(true);
+    }
+
+    const handleBeforeInstallPrompt = (event) => {
+      event.preventDefault();
+      setDeferredPrompt(event);
+      if (!isDismissed(ANDROID_DISMISS_KEY)) {
+        setShowAndroidPrompt(true);
+      }
+    };
+
+    const handleAppInstalled = () => {
+      setShowAndroidPrompt(false);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("appinstalled", handleAppInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", handleAppInstalled);
+    };
+  }, []);
+
+  const dismissPrompt = (storageKey, setter) => {
+    try {
+      window.localStorage.setItem(storageKey, "1");
+    } catch {}
+    setter(false);
+  };
+
+  const installOnAndroid = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const choice = await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+    setShowAndroidPrompt(false);
+    if (choice?.outcome === "dismissed") {
+      try {
+        window.localStorage.setItem(ANDROID_DISMISS_KEY, "1");
+      } catch {}
+    }
+  };
+
+  if (!showAndroidPrompt && !showIOSPrompt) return null;
+
+  return (
+    <div style={S.installPromptWrap}>
+      {showAndroidPrompt && (
+        <div style={S.installPromptCard}>
+          <p style={S.installPromptTitle}>Install BrainBlast</p>
+          <p style={S.installPromptText}>Add the app to your home screen for full-screen gameplay and faster launch.</p>
+          <div style={S.installActions}>
+            <button style={S.installSecondaryBtn} onClick={() => dismissPrompt(ANDROID_DISMISS_KEY, setShowAndroidPrompt)}>Later</button>
+            <button style={S.installPrimaryBtn} onClick={installOnAndroid}>Install</button>
+          </div>
+        </div>
+      )}
+
+      {!showAndroidPrompt && showIOSPrompt && (
+        <div style={S.installPromptCard}>
+          <p style={S.installPromptTitle}>Install on iPhone/iPad</p>
+          <p style={S.installPromptText}>Tap <strong>Share</strong> then choose <strong>Add to Home Screen</strong> to install BrainBlast.</p>
+          <div style={S.installActions}>
+            <button style={S.installPrimaryBtn} onClick={() => dismissPrompt(IOS_DISMISS_KEY, setShowIOSPrompt)}>Got it</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // MAIN
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function BrainBlast() {
@@ -574,6 +670,7 @@ export default function BrainBlast() {
           loading={loading}
         />
       )}
+      <InstallPrompt />
     </div>
   );
 }
@@ -602,4 +699,11 @@ const S = {
   ansLetter: { width:28, height:28, borderRadius:8, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'Bebas Neue',cursive", fontSize:16, flexShrink:0 },
   feedback: { padding:"11px 14px", borderRadius:12, fontSize:13, fontWeight:700, textAlign:"center", animation:"fadeUp 0.3s ease" },
   statBox: { display:"flex", flexDirection:"column", alignItems:"center", background:"#0d0d1a", borderRadius:14, padding:"14px 10px", border:"1px solid #2a2a3a", gap:4 },
+  installPromptWrap: { position:"fixed", left:12, right:12, bottom:12, zIndex:20, display:"flex", justifyContent:"center", pointerEvents:"none" },
+  installPromptCard: { width:"100%", maxWidth:500, background:"#111120ee", border:"1px solid #2a2a3a", boxShadow:"0 24px 64px #000000aa", borderRadius:14, padding:"12px 14px", pointerEvents:"auto", backdropFilter:"blur(6px)" },
+  installPromptTitle: { fontSize:15, fontWeight:800, color:"#f4f6ff", marginBottom:4 },
+  installPromptText: { fontSize:12, lineHeight:1.4, color:"#aeb8e6", marginBottom:10 },
+  installActions: { display:"flex", gap:8, justifyContent:"flex-end" },
+  installPrimaryBtn: { border:"none", background:"linear-gradient(135deg,#f4a261,#e63946)", color:"#fff", borderRadius:10, padding:"8px 14px", fontWeight:800, fontSize:12, cursor:"pointer" },
+  installSecondaryBtn: { border:"1px solid #39457b", background:"#1a2145", color:"#d3dbff", borderRadius:10, padding:"8px 14px", fontWeight:800, fontSize:12, cursor:"pointer" },
 };
