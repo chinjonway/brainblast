@@ -9,8 +9,8 @@
     "preview": "vite preview",
     "cf:login": "wrangler login",
     "cf:project:create": "wrangler pages project create",
-    "cf:dev": "wrangler pages dev dist --functions functions",
-    "cf:deploy": "wrangler pages deploy dist --functions functions"
+    "cf:dev": "wrangler pages dev dist",
+    "cf:deploy": "wrangler pages deploy dist --project-name brainblast"
   },
   "dependencies": {
     "react": "^18.3.1",
