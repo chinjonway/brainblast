@@ -40,6 +40,7 @@ export async function onRequestOptions() {
 export async function onRequestPost(context) {
   try {
     const apiKey = context.env.ANTHROPIC_API_KEY;
+    const model = context.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022";
     if (!apiKey) {
       return json({ error: "Missing ANTHROPIC_API_KEY environment variable" }, 500);
     }
@@ -62,7 +63,7 @@ export async function onRequestPost(context) {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model,
         max_tokens: 2500,
         system: buildSystemPrompt(numQuestions, chosenTopics, langAssignments, seed),
         messages: [
@@ -76,7 +77,7 @@ export async function onRequestPost(context) {
 
     if (!anthropicRes.ok) {
       const text = await anthropicRes.text();
-      return json({ error: `Anthropic ${anthropicRes.status}: ${text.slice(0, 200)}` }, 502);
+      return json({ error: `Anthropic ${anthropicRes.status} using ${model}: ${text.slice(0, 200)}` }, 502);
     }
 
     const data = await anthropicRes.json();
