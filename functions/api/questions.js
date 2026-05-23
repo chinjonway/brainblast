@@ -40,7 +40,7 @@ export async function onRequestOptions() {
 export async function onRequestPost(context) {
   try {
     const apiKey = context.env.ANTHROPIC_API_KEY;
-    const model = context.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022";
+    const model = context.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20240620";
     if (!apiKey) {
       return json({ error: "Missing ANTHROPIC_API_KEY environment variable" }, 500);
     }
